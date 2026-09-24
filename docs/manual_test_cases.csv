@@ -1,0 +1,101 @@
+TC_ID,Title,Requirement,Technique,Priority,Preconditions,Steps,Expected_Result,Actual_Result,Status,Jira_Bug,Tester,Date
+MTC-001,Power-up state and FET outputs,REQ-BMS-001,State transition,High,Console started (fresh power-up),"1. status
+2. @TICK 1
+3. status","Step 1: State INIT, both FETs OFF
+Step 3: State IDLE, Faults 0x00, both FETs ON",,Not Run,,,
+MTC-002,Over-voltage boundary 4199 / 4200 mV,REQ-BMS-010,Boundary value,High,MTC-001 done (IDLE),"1. @CELL 0 4199
+2. @TICK 5
+3. status
+4. @CELL 0 4200
+5. @TICK 3
+6. status","Step 3: no fault, IDLE
+Step 6: FAULT, Faults 0x01 (OV), both FETs OFF",,Not Run,,,
+MTC-003,Over-voltage debounce timing (300 ms),REQ-BMS-010 / REQ-BMS-050,Timing,High,IDLE,"1. @CELL 2 4300
+2. @TICK 2
+3. status
+4. @TICK 1
+5. status","Step 3: not in FAULT, FETs ON (200 ms)
+Step 5: FAULT, FETs OFF (300 ms)",,Not Run,,,
+MTC-004,Over-voltage hysteresis and clear,REQ-BMS-011 / REQ-COM-014,Decision table,High,OV fault active (cell at 4250 mV),"1. @CELL 0 4150
+2. @TICK 3
+3. CLEAR_FAULTS
+4. @CELL 0 4100
+5. @TICK 1
+6. CLEAR_FAULTS
+7. status","Step 3: ERR,FAULT_ACTIVE
+Step 6: OK,CLEARED
+Step 7: IDLE, FETs ON",,Not Run,,,
+MTC-005,Under-voltage boundary and release,REQ-BMS-020 / REQ-BMS-021,Boundary value,High,IDLE,"1. @CELLS 3001  then @TICK 5  then status
+2. @CELLS 3000  then @TICK 3  then status
+3. @CELLS 3099  then @TICK 1  then CLEAR_FAULTS
+4. @CELLS 3100  then @TICK 1  then CLEAR_FAULTS","1: no fault
+2: FAULT 0x02 (UV)
+3: ERR,FAULT_ACTIVE
+4: OK,CLEARED",,Not Run,,,
+MTC-006,Over-temperature boundary and release,REQ-BMS-030 / REQ-BMS-031,Boundary value,High,IDLE,"1. @TEMP 599  then @TICK 5  then status
+2. @TEMP 600  then @TICK 3  then status
+3. @TEMP 551  then @TICK 1  then CLEAR_FAULTS
+4. @TEMP 550  then @TICK 1  then CLEAR_FAULTS","1: no fault
+2: FAULT 0x04 (OT)
+3: ERR,FAULT_ACTIVE
+4: OK,CLEARED",,Not Run,,,
+MTC-007,Over-current discharge and charge limits,REQ-BMS-040,Boundary value,High,IDLE,"1. @CUR -29999  then @TICK 5  then status
+2. @CUR -30000  then @TICK 3  then status
+3. @RESET  then @TICK 1
+4. @CUR 9999  then @TICK 5  then status
+5. @CUR 10000  then @TICK 3  then status","1: DISCHARGING, no fault
+2: FAULT 0x08 (OC)
+4: CHARGING, no fault
+5: FAULT 0x08 (OC)",,Not Run,,,
+MTC-008,Open-wire cell sensor,REQ-BMS-045,Error guessing,High,IDLE,"1. @CELL 1 0
+2. @TICK 1
+3. status
+4. GET_CELL,1","3: FAULT 0x10 (SENSOR) only - no UV fault; VMIN still 3700
+4: OK,CELL1=0",,Not Run,,,
+MTC-009,Fault latching after condition disappears,REQ-BMS-051,State transition,High,IDLE,"1. @TEMP 700  then @TICK 3
+2. @TEMP 250  then @TICK 50
+3. status","3: still FAULT 0x04, FETs OFF (fault latched until CLEAR_FAULTS)",,Not Run,,,
+MTC-010,Multiple simultaneous faults,REQ-BMS-051 / REQ-COM-012,Decision table,Medium,IDLE,"1. @CELL 0 4300
+2. @TEMP 650
+3. @TICK 3
+4. status","FAULT with Faults 0x05 (OV + OT) - both reported",,Not Run,,,
+MTC-011,Operating state transitions by current,REQ-BMS-060,State transition,Medium,IDLE,"1. @CUR 99 / 100 / -99 / -100 / 0 (each followed by @TICK 1 and status)","99: IDLE
+100: CHARGING
+-99: IDLE
+-100: DISCHARGING
+0: IDLE",,Not Run,,,
+MTC-012,Basic commands,REQ-COM-010 / REQ-COM-011 / REQ-COM-013,Equivalence partitioning,Medium,IDLE,"1. PING
+2. GET_VERSION
+3. GET_CELL,0  and  GET_CELL,3
+4. GET_CELL,4  /  GET_CELL,A  /  GET_CELL","1: OK,PONG
+2: OK,VERSION=1.0.0
+3: OK,CELL0=3700 / OK,CELL3=3700
+4: ERR,ARG for each",,Not Run,,,
+MTC-013,Corrupted CRC is rejected and not executed,REQ-COM-002,Negative,High,OT fault latched and released (temp back to 250 + @TICK 1),"1. !raw $CLEAR_FAULTS*00
+2. status
+3. CLEAR_FAULTS","1: ERR,CRC
+2: still FAULT (command was not executed)
+3: OK,CLEARED",,Not Run,,,
+MTC-014,Malformed frames,REQ-COM-003,Negative,Medium,IDLE,"1. !raw PING*1F
+2. !raw $PING1F
+3. !raw $PING*ZZ
+4. !raw $*00
+5. !raw hello","ERR,FORMAT for each line; console keeps working",,Not Run,,,
+MTC-015,Over-length frame and recovery,REQ-COM-004,Boundary value,Medium,IDLE,"1. Send a command of 60 X characters (64-char frame)
+2. Send a command of 61 X characters (65-char frame)
+3. PING","1: ERR,UNKNOWN_CMD (length accepted)
+2: ERR,LENGTH
+3: OK,PONG (link recovered)",,Not Run,,,
+MTC-016,Unknown and case-sensitive commands,REQ-COM-005,Error guessing,Low,IDLE,"1. REBOOT
+2. ping
+3. Ping","ERR,UNKNOWN_CMD for each",,Not Run,,,
+MTC-017,Power cycle clears RAM state,REQ-BMS-001 / REQ-BMS-051,State transition,Medium,Any fault active,"1. @RESET
+2. status
+3. @TICK 1
+4. status","2: INIT, FETs OFF
+4: IDLE, no faults",,Not Run,,,
+MTC-018,Console transcript for bug evidence,Tooling,Usability,Low,Any,"1. Run a few commands
+2. log evidence.log
+3. Open evidence.log","File contains every >> sent and << received line in order",,Not Run,,,
+EXP-001,Exploratory charter: fault interactions,REQ-BMS-*,Exploratory (45 min),High,IDLE,"Explore: combine faults, clear while one of two faults still active, change inputs between ticks, faults during CHARGING vs DISCHARGING. Take notes and log transcripts.","Record observations, questions and any bugs in Jira",,Not Run,,,
+EXP-002,Exploratory charter: protocol robustness,REQ-COM-*,Exploratory (30 min),Medium,IDLE,"Explore: spaces, commas, very long numbers, non-ASCII via !raw, rapid repeated commands, empty lines, partial frames.","Record observations, questions and any bugs in Jira",,Not Run,,,

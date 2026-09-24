@@ -1,0 +1,65 @@
+name: QA pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build · unit · functional · coverage · static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y ninja-build cppcheck
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python test tools
+        run: pip install -r requirements-dev.txt
+
+      - name: Run QA pipeline
+        run: python tools/run_all.py
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-reports
+          path: reports/
+
+      - name: Prepare dashboard site
+        if: always() && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p site
+          cp -r reports site/reports
+          cp -r docs site/docs
+          echo '<meta http-equiv="refresh" content="0; url=reports/dashboard.html">' > site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        if: always() && github.ref == 'refs/heads/main'
+        with:
+          path: site
+
+  # Publishes the dashboard to GitHub Pages (enable Pages -> Source: GitHub Actions in repo settings).
+  pages:
+    needs: test
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
