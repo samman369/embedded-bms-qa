@@ -80,7 +80,11 @@ MTC-014,Malformed frames,REQ-COM-003,Negative,Medium,IDLE,"1. !raw PING*1F
 2. !raw $PING1F
 3. !raw $PING*ZZ
 4. !raw $*00
-5. !raw hello","ERR,FORMAT for each line; console keeps working",,Not Run,,,
+5. !raw hello","1: ERR,FORMAT (missing $)
+2: ERR,FORMAT (missing *)
+3: ERR,FORMAT (non-hex CRC)
+4: ERR,FORMAT (empty payload)
+5: ERR,FORMAT (garbage); console keeps working",,Not Run,,,
 MTC-015,Over-length frame and recovery,REQ-COM-004,Boundary value,Medium,IDLE,"1. Send a command of 60 X characters (64-char frame)
 2. Send a command of 61 X characters (65-char frame)
 3. PING","1: ERR,UNKNOWN_CMD (length accepted)
@@ -88,7 +92,9 @@ MTC-015,Over-length frame and recovery,REQ-COM-004,Boundary value,Medium,IDLE,"1
 3: OK,PONG (link recovered)",,Not Run,,,
 MTC-016,Unknown and case-sensitive commands,REQ-COM-005,Error guessing,Low,IDLE,"1. REBOOT
 2. ping
-3. Ping","ERR,UNKNOWN_CMD for each",,Not Run,,,
+3. Ping","1: ERR,UNKNOWN_CMD
+2: ERR,UNKNOWN_CMD (commands are case-sensitive)
+3: ERR,UNKNOWN_CMD",,Not Run,,,
 MTC-017,Power cycle clears RAM state,REQ-BMS-001 / REQ-BMS-051,State transition,Medium,Any fault active,"1. @RESET
 2. status
 3. @TICK 1
@@ -96,6 +102,8 @@ MTC-017,Power cycle clears RAM state,REQ-BMS-001 / REQ-BMS-051,State transition,
 4: IDLE, no faults",,Not Run,,,
 MTC-018,Console transcript for bug evidence,Tooling,Usability,Low,Any,"1. Run a few commands
 2. log evidence.log
-3. Open evidence.log","File contains every >> sent and << received line in order",,Not Run,,,
+3. Open evidence.log","1: Each command gets a reply
+2: Message: transcript saved to evidence.log
+3: File contains every >> sent and << received line in order",,Not Run,,,
 EXP-001,Exploratory charter: fault interactions,REQ-BMS-*,Exploratory (45 min),High,IDLE,"Explore: combine faults, clear while one of two faults still active, change inputs between ticks, faults during CHARGING vs DISCHARGING. Take notes and log transcripts.","Record observations, questions and any bugs in Jira",,Not Run,,,
 EXP-002,Exploratory charter: protocol robustness,REQ-COM-*,Exploratory (30 min),Medium,IDLE,"Explore: spaces, commas, very long numbers, non-ASCII via !raw, rapid repeated commands, empty lines, partial frames.","Record observations, questions and any bugs in Jira",,Not Run,,,

@@ -1,6 +1,8 @@
-Summary,Issue Type,Priority,Severity,Component/s,Affects Version/s,Fix Version/s,Labels,Labels,Environment,Description
-"Over-voltage protection does not trip at exactly 4200 mV",Bug,Highest,Critical,Protection,1.0.0-dev,1.0.0,safety,boundary,"Windows 11, GCC 16.1, Unity 2.6, host build with fake HAL","h3. Requirement
-REQ-BMS-010 (fault when any cell >= 4200 mV for 3 cycles)
+Summary,Issue Type,Priority,Labels,Environment,Description
+"Over-voltage protection does not trip at exactly 4200 mV",Bug,Highest,safety boundary protection seeded-defect,"Windows 11, GCC 16.1, Unity 2.6, host build with fake HAL","*Severity:* Critical - safety function fails at the specified limit
+*Component:* Protection (firmware/src/bms.c)
+*Affects version:* 1.0.0-dev    *Fix version:* 1.0.0
+*Requirement:* REQ-BMS-010 (fault when any cell >= 4200 mV for 3 cycles)
 
 h3. Steps to reproduce
 # Start tools/bms_console.py
@@ -19,9 +21,16 @@ State IDLE, Faults 0x00, FETs ON. Unit test output:
 h3. Root cause
 bms.c used vmax > BMS_OV_TRIP_MV instead of >=. The 4199 mV test passed - only the exact boundary exposes it.
 
+h3. Resolution
+Operator fixed. Retest passed; regression: 87 unit + 56 functional tests pass.
+
 h3. Note
 Seeded defect used to validate the test suite (defect seeding)."
-"Test console crashes on non-ASCII input (UTF-8 BOM)",Bug,Medium,Minor,Tools,1.0.0-dev,1.0.0,tooling,robustness,"Windows 11, PowerShell 5.1, Python 3.14","h3. Steps to reproduce
+"Test console crashes on non-ASCII input (UTF-8 BOM)",Bug,Medium,tooling robustness encoding,"Windows 11, PowerShell 5.1, Python 3.14","*Severity:* Minor - test tooling, workaround exists
+*Component:* Tools (tools/bms_console.py)
+*Affects version:* 1.0.0-dev    *Fix version:* 1.0.0
+
+h3. Steps to reproduce
 # Create input.txt containing PING
 # Run: Get-Content input.txt | python tools/bms_console.py
 
@@ -33,4 +42,7 @@ h3. Actual result
 Session ends, transcript lost.
 
 h3. Root cause
-PowerShell 5.1 prefixes piped text with a BOM; the console did not handle non-ASCII input."
+PowerShell 5.1 prefixes piped text with a BOM; the console did not handle non-ASCII input.
+
+h3. Resolution
+Leading BOM stripped, UnicodeEncodeError handled with a clear message. Retest passed."

@@ -1,0 +1,94 @@
+Name,Objective,Precondition,Priority,Status,Folder,Labels,Test Script Plain Text
+MTC-001 Power-up state and FET outputs,Verify REQ-BMS-001 using state transition.,Console started (fresh power-up),High,Approved,/Protection,REQ-BMS-001 state-transition,"1. status  ->  expected: State INIT, both FETs OFF
+2. @TICK 1  ->  expected: Bench replies @OK
+3. status  ->  expected: State IDLE, Faults 0x00, both FETs ON
+"
+MTC-002 Over-voltage boundary 4199 / 4200 mV,Verify REQ-BMS-010 using boundary value.,MTC-001 done (IDLE),High,Approved,/Protection,REQ-BMS-010 boundary-value,"1. @CELL 0 4199  ->  expected: Bench replies @OK
+2. @TICK 5  ->  expected: Bench replies @OK
+3. status  ->  expected: no fault, IDLE
+4. @CELL 0 4200  ->  expected: Bench replies @OK
+5. @TICK 3  ->  expected: Bench replies @OK
+6. status  ->  expected: FAULT, Faults 0x01 (OV), both FETs OFF
+"
+MTC-003 Over-voltage debounce timing (300 ms),Verify REQ-BMS-010 / REQ-BMS-050 using timing.,IDLE,High,Approved,/Protection,REQ-BMS-010 REQ-BMS-050 timing,"1. @CELL 2 4300  ->  expected: Bench replies @OK
+2. @TICK 2  ->  expected: Bench replies @OK
+3. status  ->  expected: not in FAULT, FETs ON (200 ms)
+4. @TICK 1  ->  expected: Bench replies @OK
+5. status  ->  expected: FAULT, FETs OFF (300 ms)
+"
+MTC-004 Over-voltage hysteresis and clear,Verify REQ-BMS-011 / REQ-COM-014 using decision table.,OV fault active (cell at 4250 mV),High,Approved,/Protection,REQ-BMS-011 REQ-COM-014 decision-table,"1. @CELL 0 4150  ->  expected: Bench replies @OK
+2. @TICK 3  ->  expected: Bench replies @OK
+3. CLEAR_FAULTS  ->  expected: ERR,FAULT_ACTIVE
+4. @CELL 0 4100  ->  expected: Bench replies @OK
+5. @TICK 1  ->  expected: Bench replies @OK
+6. CLEAR_FAULTS  ->  expected: OK,CLEARED
+7. status  ->  expected: IDLE, FETs ON
+"
+MTC-005 Under-voltage boundary and release,Verify REQ-BMS-020 / REQ-BMS-021 using boundary value.,IDLE,High,Approved,/Protection,REQ-BMS-020 REQ-BMS-021 boundary-value,"1. @CELLS 3001  then @TICK 5  then status  ->  expected: no fault
+2. @CELLS 3000  then @TICK 3  then status  ->  expected: FAULT 0x02 (UV)
+3. @CELLS 3099  then @TICK 1  then CLEAR_FAULTS  ->  expected: ERR,FAULT_ACTIVE
+4. @CELLS 3100  then @TICK 1  then CLEAR_FAULTS  ->  expected: OK,CLEARED
+"
+MTC-006 Over-temperature boundary and release,Verify REQ-BMS-030 / REQ-BMS-031 using boundary value.,IDLE,High,Approved,/Protection,REQ-BMS-030 REQ-BMS-031 boundary-value,"1. @TEMP 599  then @TICK 5  then status  ->  expected: no fault
+2. @TEMP 600  then @TICK 3  then status  ->  expected: FAULT 0x04 (OT)
+3. @TEMP 551  then @TICK 1  then CLEAR_FAULTS  ->  expected: ERR,FAULT_ACTIVE
+4. @TEMP 550  then @TICK 1  then CLEAR_FAULTS  ->  expected: OK,CLEARED
+"
+MTC-007 Over-current discharge and charge limits,Verify REQ-BMS-040 using boundary value.,IDLE,High,Approved,/Protection,REQ-BMS-040 boundary-value,"1. @CUR -29999  then @TICK 5  then status  ->  expected: DISCHARGING, no fault
+2. @CUR -30000  then @TICK 3  then status  ->  expected: FAULT 0x08 (OC)
+3. @RESET  then @TICK 1  ->  expected: Bench replies @OK
+4. @CUR 9999  then @TICK 5  then status  ->  expected: CHARGING, no fault
+5. @CUR 10000  then @TICK 3  then status  ->  expected: FAULT 0x08 (OC)
+"
+MTC-008 Open-wire cell sensor,Verify REQ-BMS-045 using error guessing.,IDLE,High,Approved,/Protection,REQ-BMS-045 error-guessing,"1. @CELL 1 0  ->  expected: Bench replies @OK
+2. @TICK 1  ->  expected: Bench replies @OK
+3. status  ->  expected: FAULT 0x10 (SENSOR) only - no UV fault; VMIN still 3700
+4. GET_CELL,1  ->  expected: OK,CELL1=0
+"
+MTC-009 Fault latching after condition disappears,Verify REQ-BMS-051 using state transition.,IDLE,High,Approved,/Protection,REQ-BMS-051 state-transition,"1. @TEMP 700  then @TICK 3  ->  expected: Bench replies @OK
+2. @TEMP 250  then @TICK 50  ->  expected: Bench replies @OK
+3. status  ->  expected: still FAULT 0x04, FETs OFF (fault latched until CLEAR_FAULTS)
+"
+MTC-010 Multiple simultaneous faults,Verify REQ-BMS-051 / REQ-COM-012 using decision table.,IDLE,Normal,Approved,/Protection,REQ-BMS-051 REQ-COM-012 decision-table,"1. @CELL 0 4300  ->  expected: Bench replies @OK
+2. @TEMP 650  ->  expected: Bench replies @OK
+3. @TICK 3  ->  expected: Bench replies @OK
+4. status  ->  expected: FAULT with Faults 0x05 (OV + OT) - both reported
+"
+MTC-011 Operating state transitions by current,Verify REQ-BMS-060 using state transition.,IDLE,Normal,Approved,/Protection,REQ-BMS-060 state-transition,"1. @CUR 99 / 100 / -99 / -100 / 0 (each followed by @TICK 1 and status)  ->  expected: 99: IDLE; 100: CHARGING; -99: IDLE; -100: DISCHARGING; 0: IDLE
+"
+MTC-012 Basic commands,Verify REQ-COM-010 / REQ-COM-011 / REQ-COM-013 using equivalence partitioning.,IDLE,Normal,Approved,/Communication,REQ-COM-010 REQ-COM-011 REQ-COM-013 equivalence-partitioning,"1. PING  ->  expected: OK,PONG
+2. GET_VERSION  ->  expected: OK,VERSION=1.0.0
+3. GET_CELL,0  and  GET_CELL,3  ->  expected: OK,CELL0=3700 / OK,CELL3=3700
+4. GET_CELL,4  /  GET_CELL,A  /  GET_CELL  ->  expected: ERR,ARG for each
+"
+MTC-013 Corrupted CRC is rejected and not executed,Verify REQ-COM-002 using negative.,OT fault latched and released (temp back to 250 + @TICK 1),High,Approved,/Communication,REQ-COM-002 negative,"1. !raw $CLEAR_FAULTS*00  ->  expected: ERR,CRC
+2. status  ->  expected: still FAULT (command was not executed)
+3. CLEAR_FAULTS  ->  expected: OK,CLEARED
+"
+MTC-014 Malformed frames,Verify REQ-COM-003 using negative.,IDLE,Normal,Approved,/Communication,REQ-COM-003 negative,"1. !raw PING*1F  ->  expected: ERR,FORMAT (missing $)
+2. !raw $PING1F  ->  expected: ERR,FORMAT (missing *)
+3. !raw $PING*ZZ  ->  expected: ERR,FORMAT (non-hex CRC)
+4. !raw $*00  ->  expected: ERR,FORMAT (empty payload)
+5. !raw hello  ->  expected: ERR,FORMAT (garbage); console keeps working
+"
+MTC-015 Over-length frame and recovery,Verify REQ-COM-004 using boundary value.,IDLE,Normal,Approved,/Communication,REQ-COM-004 boundary-value,"1. Send a command of 60 X characters (64-char frame)  ->  expected: ERR,UNKNOWN_CMD (length accepted)
+2. Send a command of 61 X characters (65-char frame)  ->  expected: ERR,LENGTH
+3. PING  ->  expected: OK,PONG (link recovered)
+"
+MTC-016 Unknown and case-sensitive commands,Verify REQ-COM-005 using error guessing.,IDLE,Low,Approved,/Communication,REQ-COM-005 error-guessing,"1. REBOOT  ->  expected: ERR,UNKNOWN_CMD
+2. ping  ->  expected: ERR,UNKNOWN_CMD (commands are case-sensitive)
+3. Ping  ->  expected: ERR,UNKNOWN_CMD
+"
+MTC-017 Power cycle clears RAM state,Verify REQ-BMS-001 / REQ-BMS-051 using state transition.,Any fault active,Normal,Approved,/Protection,REQ-BMS-001 REQ-BMS-051 state-transition,"1. @RESET  ->  expected: Bench replies @OK
+2. status  ->  expected: INIT, FETs OFF
+3. @TICK 1  ->  expected: Bench replies @OK
+4. status  ->  expected: IDLE, no faults
+"
+MTC-018 Console transcript for bug evidence,Verify Tooling using usability.,Any,Low,Approved,/Protection,usability,"1. Run a few commands  ->  expected: Each command gets a reply
+2. log evidence.log  ->  expected: Message: transcript saved to evidence.log
+3. Open evidence.log  ->  expected: File contains every >> sent and << received line in order
+"
+EXP-001 Exploratory charter: fault interactions,Verify REQ-BMS-* using exploratory (45 min).,IDLE,High,Approved,/Exploratory,exploratory,"1. Explore: combine faults, clear while one of two faults still active, change inputs between ticks, faults during CHARGING vs DISCHARGING. Take notes and log transcripts.  ->  expected: Record observations, questions and any bugs in Jira
+"
+EXP-002 Exploratory charter: protocol robustness,Verify REQ-COM-* using exploratory (30 min).,IDLE,Normal,Approved,/Exploratory,exploratory,"1. Explore: spaces, commas, very long numbers, non-ASCII via !raw, rapid repeated commands, empty lines, partial frames.  ->  expected: Record observations, questions and any bugs in Jira
+"
